@@ -8,6 +8,10 @@ function rectifier(v) {
   return Math.max(0, v);
 }
 
+function rectifierDerivative(v) {
+  return v < 0 ? 0 : 1;
+}
+
 function range(len) {
   return Array.apply(null, Array(len)).map((_, i) => i);
 }
@@ -38,11 +42,16 @@ class Neuron {
 
     // Functions that emit a value between 0 and 1
     this.inputs = [];
+
+    // For backpropagation remember the input to the activation function
+    this.z = 0;
   }
 
   activation() {
-    return zip(this.weights, this.inputs).reduce((sum, [weight, input]) =>
+    this.z = zip(this.weights, this.inputs).reduce((sum, [weight, input]) =>
       sum + (weight * input.activation()), 0) + this.bias;
+
+    return rectifier(this.z);
   }
 
   connect(neuron, weight) {
@@ -79,6 +88,46 @@ function makeNetwork(width, height) {
 
   fullyConnect(hiddenLayer, inputNeurons);
   fullyConnect(outputNeurons, hiddenLayer);
+
+  const backPropagation = (correctAnswer) => {
+    const outermostDelta = outputNeurons.map(outNeuron =>
+      (outNeuron.activation() - correctAnswer) * rectifierDerivative(outNeuron.z));
+
+    const propagateDelta = (delta, layerOuter, layerInner) => {
+      const weightsByInner = range(layerInner.length).map(i =>
+        layerOuter.map(n => n.weights[i]));
+      const deltaActivations = layerInner.map(innerNeuron =>
+        rectifierDerivative(innerNeuron.z));
+
+      const backErrorPart = weightsByInner.map(weights =>
+        zip(weights, delta).reduce((sum, [w, e]) => w * e, 0));
+
+      // Compute new delta
+      return zip(backErrorPart, deltaActivations).map(([e, a]) => e * a);
+    };
+
+    const hiddenDelta = propagateDelta(outermostDelta, outputNeurons, hiddenLayer);
+  };
+
+  const gradientDescent = (learningRate, layerOuter, layerInner, delta) => {
+    layerOuter.forEach((neuron, i) => {
+      const deltaCostByWeights = neuron.inputs
+        .map((input, i) => input.activation() * delta[i]);
+
+      neuron.weights = zip(neuron.weights, deltaCostByWeights)
+        .map(([w, dCW]) => w - learningRate * dCW);
+
+      neuron.bias = delta[i]
+    });
+  };
+
+    /*
+    const layerErrors = zip(), outputError)
+      .map(([w, e]) => w * e * deltaActivation[)
+
+    () * rectifierDerivative(hiddenNeuron.z)
+    */
+  };
 
   return {
     inputs: inputNeurons,

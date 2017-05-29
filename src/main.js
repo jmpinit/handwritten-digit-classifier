@@ -41,8 +41,7 @@ function main() {
       n.set(image[y][x]);
     });
 
-    nn.outputs.forEach((out, i) =>
-      console.log(`Digit ${i} neuron activated at ${out.activation()}`));
+    const outputs = nn.outputs.map(outNeuron => outNeuron.activation());
   });
 }
 
